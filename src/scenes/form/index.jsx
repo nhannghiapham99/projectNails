@@ -32,10 +32,20 @@ const userSchema = yup.object().shape({
 const Form = () => {
     const isNonMobile = useMediaQuery("(min-width:600px)");
     
-    
+   
     const handleFormSubmit = (values) => {  
-        console.log(values);   
         
+        console.log(values);   
+       
+        fetch('http://localhost:8081/Staff',{
+            method:"POST",
+            headers: {
+                'Content-Type': 'application/json', // Ensure the Content-Type is set to application/json
+            },
+            body:JSON.stringify(values)
+        }).then(() => {
+            console.log('new Staff created');
+        })
     }
     return (
         
