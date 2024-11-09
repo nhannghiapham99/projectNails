@@ -26,18 +26,22 @@ const userSchema = yup.object().shape({
     .required("required"),
     email: yup.string().email("invalid email").required("required"),
     position: yup.string().required("required"),
-    hireDate: yup.string().required("required")
+    hireDate: yup.date().required("required date is YYYY-MM-DD ").nullable()
 })
 
 const Form = () => {
     const isNonMobile = useMediaQuery("(min-width:600px)");
-    
-   
-    const handleFormSubmit = (values) => {  
+    const [inputData, setInputData] = useState('');
+    const [message, setMessage] = useState('');
+    const [messageType, setMessageType] = useState(''); // 'success' or 'error'
+    const [loading, setLoading] = useState(false);
+
+    const handleFormSubmit = async (values) => {  
         
         console.log(values);   
        
-        fetch('http://localhost:8081/Staff',{
+        try {
+            const response = await fetch('http://localhost:8081/Staff',{
             method:"POST",
             headers: {
                 'Content-Type': 'application/json', // Ensure the Content-Type is set to application/json
@@ -45,8 +49,26 @@ const Form = () => {
             body:JSON.stringify(values)
         }).then(() => {
             console.log('new Staff created');
-        })
-    }
+            alert('new Staff created'); 
+        });
+        if (response.ok) {
+            // If the response status is in the range 200-299 (success)
+            const data = await response.json();
+            setMessage('Data submitted successfully!');
+            setMessageType('success');
+          } else {
+            // If the response status is not in the range 200-299 (error)
+            setMessage('Failed to submit data. Please try again.');
+            setMessageType('error');
+          }
+        } catch (error) {
+          // If there is an error in making the request (e.g., network error)
+          setMessage('An error occurred. Please check your connection and try again.');
+          setMessageType('error');
+        } finally {
+          setLoading(false); // Always stop loading after the request
+        }
+    };
     return (
         
         <Box m="20px">

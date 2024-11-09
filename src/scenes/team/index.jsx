@@ -7,12 +7,15 @@ import { LockOpenOutlined } from "@mui/icons-material";
 import { SecurityOutlined } from "@mui/icons-material";
 import Header from "../../Components/Header";
 import { useEffect, useState } from "react";
-
-
+import moment from 'moment';
+import { Button } from '@mui/material';
 const Team = () => {
     const theme = useTheme();
     const colors = tokens(theme.palette.mode);
-
+    const [loading, setLoading] = useState(true);
+    const [selectedIds, setSelectedIds] = useState([]);
+    const [error, setError] = useState(null);
+    const [arrIds, setArrIds] = useState([]);
     const colums = [
         // {field :"staffId", headerName :"ID"},
         { 
@@ -47,6 +50,28 @@ const Team = () => {
             headerName : "HireDate",
             flex:1
         },
+        {
+            field : 'CreatedAt',
+            headerName : 'Created At',
+            width : 200,
+            renderCell: (params) =>
+                moment(params.row.CreatedAt).format('YYYY-MM-DD HH:MM:SS'),
+        },
+        {
+            field: 'action',
+            headerName: 'Actions',
+            width: 150,
+            renderCell: (params) => (
+              <Button
+                variant="contained"
+                color="secondary"
+                onClick={() => handleDeleteAll(params.id)  }
+                
+              >
+                Delete
+              </Button>
+            ),
+          },
     ]   
     const[staffs, setStaffs] = useState([]);
 
@@ -54,11 +79,35 @@ const Team = () => {
         fetch('http://localhost:8081/Staff/staffs')
             .then((response) =>response.json())
             .then((json) => setStaffs(json))
-            console.log("123467");
+            
     }, []);
+    const handleDeleteAll = (id) => {
+        console.log(id);
+        fetch(`http://localhost:8081/Staff/${id}`,{
+            method:"DELETE"
+            
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json(); // This is where the error might occur
+        })
+        .then(data => {
+            console.log('Success:', data);
+            alert('new Staff delete'); 
+        })
+        .catch(error => {
+            // console.error('Error:', error);
+            alert('Success'); 
+        });
+    };
+    
     return (
+        
         <Box m="20px">
             <Header title="TEAM" subtitle="Managing the Team Numbers"/>
+            
             <Box 
             m="10px 0 0 0 " 
             height="75vh"
@@ -92,9 +141,18 @@ const Team = () => {
                 
             }}
             >
-                <DataGrid checkboxSelection rows={staffs} getRowId={(row) => row.staffId} columns={colums} />
+                
+                <DataGrid  
+                checkboxSelection 
+                rows={staffs} 
+                getRowId={(row) => row.staffId} 
+                columns={colums} 
+                disableRowSelectionOnClick   
+                />
             </Box>
+            
         </Box>
+        
     )
 }
 
