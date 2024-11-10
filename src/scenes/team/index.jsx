@@ -143,7 +143,7 @@ const Team = () => {
             >
                 
                 <DataGrid  
-                checkboxSelection 
+                // checkboxSelection 
                 rows={staffs} 
                 getRowId={(row) => row.staffId} 
                 columns={colums} 

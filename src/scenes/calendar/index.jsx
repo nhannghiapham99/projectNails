@@ -25,12 +25,14 @@ const Calendar = () => {
     const [nameEvent, setNameEvent] = useState([]);
     const [appointmentStart, setAppointmentStart] = useState([]);
     const [appointmentEnd, setAppointmentEnd] = useState([]);
-    
+    const [message, setMessage] = useState('');
+        const [messageType, setMessageType] = useState(''); // 'success' or 'error'
+        const [loading, setLoading] = useState(false);
     useEffect(() => {
       // Make the API call to fetch events
       const fetchEvents = async () => {
         try {
-          const response = await fetch('http://localhost:8081/Appoinment/list'); // Replace with your API endpoint
+          const response = await fetch('http://localhost:8081/Appointment/list'); // Replace with your API endpoint
           const data = await response.json();
   
           // Convert data if needed (e.g., format dates)
@@ -57,11 +59,16 @@ const Calendar = () => {
     //       end: events.appointmentEnd,      // FullCalendar expects the end date in ISO 8601 format
     //     });
     //   }
-    const handleDateClick = async  (selected) => {
+    const handleDateClick = async (selected) => {
+      
         const title = prompt("Please enter a new title for your event");
         // const decription = prompt("Please enter price this service ")
         const calendarApi = selected.view.calendar;
-        
+        const eventData = {
+          nameEvent : `${title}`,
+          appointmentStart : selected.startStr,
+          appointmentEnd : selected.endStr
+        };
         calendarApi.unselect();
 
         if(title) {
@@ -71,48 +78,61 @@ const Calendar = () => {
                 start:selected.startStr,
                 end: selected.endStr,
                 allDay: selected.allDay,
-              //   evenData : {
-              //     nameEvent: selected.title,
-              //     appointmentStart:selected.startStr,
-              //     appointmentEnd: selected.endStr,
-              // }
-            })
-            console.log(selected.List);
+            }             
+          )
+            console.log(eventData);
 
-        //     fetch('http://localhost:8081/Appoinment',{
-        //       method:"POST",
-        //       headers: {
-        //         'Content-Type': 'application/json', // Ensure the Content-Type is set to application/json
-        //     },
-        //     bodybody:JSON.stringify(currentEvents)
-            
-        //   })
-        //   .then(response => {
-        //       if (!response.ok) {
-        //           throw new Error('Network response was not ok');
-        //       }
-        //       return response.json(); // This is where the error might occur
-        //   })
-        //   .then(data => {
-        //       console.log('Success:', data);
-        //       alert('new event added'); 
-        //   })
-        //   .catch(error => {
-        //       // console.error('Error:', error);
-        //       alert('Success'); 
-        //       console.log(calendarApi);
-        //   });
+            try {
+              const response = await fetch('http://localhost:8081/Appointment', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(eventData),  // Send event data in the request body
+              });
         
-        }
+              if (!response.ok) {
+                const errorDetails = await response.json();
+                setMessage(`Error: ${errorDetails.message || 'Failed to create event'}`);
+                return;
+              }
+        
+              const result = await response.json();
+              setMessage('Event created successfully!');
+              console.log(result);  // Handle the success response
+            } catch (error) {
+              console.error('Error:', error.message);
+              setMessage('Error: Failed to create event.');
+            } finally {
+              setLoading(false);
+            }
+          }
     };
 
     const handleEventClick = (selected) => {
-        if(window.confirm(`Are you sure you want to delete the even '${selected.event.title}'`
-
-        )
-      )   {
-        selected.event.remove();
-      }
+        if(window.confirm(`Are you sure you want to delete the even '${selected.event.title}'` ) )   
+          {
+               selected.event.remove(); 
+          }
+        console.log(selected.event.id);
+        fetch(`http://localhost:8081/Appointment/${selected.event.id}`,{
+          method:"DELETE"
+          
+      })
+      .then(response => {
+          if (!response.ok) {
+              throw new Error('Network response was not ok');
+          }
+          return response.json(); // This is where the error might occur
+      })
+      .then(data => {
+          console.log('Success:', data);
+          alert('new Staff delete'); 
+      })
+      .catch(error => {
+          // console.error('Error:', error);
+          alert('Success'); 
+      });
     };
 
     return <Box m="20px">
