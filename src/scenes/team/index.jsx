@@ -9,6 +9,8 @@ import Header from "../../Components/Header";
 import { useEffect, useState } from "react";
 import moment from 'moment';
 import { Button } from '@mui/material';
+import { API_URL } from "../../theme";
+
 const Team = () => {
     const theme = useTheme();
     const colors = tokens(theme.palette.mode);
@@ -76,16 +78,29 @@ const Team = () => {
     const[staffs, setStaffs] = useState([]);
 
     useEffect(() => {
-        fetch('http://localhost:8081/Staff/staffs')
+        const token = localStorage.getItem('jwtToken');
+        console.log(token);
+        fetch(`${API_URL}/Staff/staffs`,{
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`, // Include token in Authorization header
+                'Content-Type': 'application/json',
+        },
+        })
+        
             .then((response) =>response.json())
             .then((json) => setStaffs(json))
             
     }, []);
     const handleDeleteAll = (id) => {
+        const token = localStorage.getItem('jwtToken');
         console.log(id);
-        fetch(`http://localhost:8081/Staff/${id}`,{
-            method:"DELETE"
-            
+        fetch(`${API_URL}/Staff/${id}`,{
+            method:"DELETE",
+            headers: {
+                'Authorization': `Bearer ${token}`, // Include token in Authorization header
+                'Content-Type': 'application/json',
+              },
         })
         .then(response => {
             if (!response.ok) {

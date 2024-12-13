@@ -4,6 +4,7 @@ import * as yup from "yup";
 import useMediaQuery from '@mui/material/useMediaQuery';
 import Header from "../../Components/Header";
 import { useEffect, useState } from "react";
+import { API_URL } from "../../theme";
 
 const initialValues = {
     firstName: "",
@@ -39,11 +40,14 @@ const Form = () => {
     const handleFormSubmit = async (values) => {  
         
         console.log(values);   
-       
+        
         try {
-            const response = await fetch('http://localhost:8081/Staff',{
+            const token = localStorage.getItem('jwtToken');
+            console.log(token);
+            const response = await fetch(`${API_URL}/Staff`,{
             method:"POST",
             headers: {
+                'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json', // Ensure the Content-Type is set to application/json
             },
             body:JSON.stringify(values)

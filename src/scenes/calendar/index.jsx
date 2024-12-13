@@ -15,6 +15,8 @@ import {
 } from "@mui/material";
 import Header from "../../Components/Header"; 
 import { tokens } from "../../theme";
+import moment from 'moment-timezone';
+import { API_URL } from "../../theme";
 
 const Calendar = () => {
     const theme = useTheme();
@@ -26,13 +28,22 @@ const Calendar = () => {
     const [appointmentStart, setAppointmentStart] = useState([]);
     const [appointmentEnd, setAppointmentEnd] = useState([]);
     const [message, setMessage] = useState('');
-        const [messageType, setMessageType] = useState(''); // 'success' or 'error'
-        const [loading, setLoading] = useState(false);
+    const [messageType, setMessageType] = useState(''); // 'success' or 'error'
+    const [loading, setLoading] = useState(false);
+    
+    
     useEffect(() => {
       // Make the API call to fetch events
+      const token = localStorage.getItem('jwtToken');
       const fetchEvents = async () => {
         try {
-          const response = await fetch('http://localhost:8081/Appointment/list'); // Replace with your API endpoint
+          const response = await fetch(`${API_URL}/Appointment/list`,{
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`, // Include token in Authorization header
+                'Content-Type': 'application/json',
+        },
+          }); // Replace with your API endpoint
           const data = await response.json();
   
           // Convert data if needed (e.g., format dates)
@@ -51,94 +62,182 @@ const Calendar = () => {
   
       fetchEvents();  // Call the fetch function
     }, []);
-    // function addEventToCalendar(events) {
-    //     // Add the event to FullCalendar
-    //     events.view.calendar.addEvent({
-    //       title: events.nameEvent,
-    //       start: events.appointmentStart,  // FullCalendar expects the date in ISO 8601 format
-    //       end: events.appointmentEnd,      // FullCalendar expects the end date in ISO 8601 format
-    //     });
-    //   }
+  
+    
+
     const handleDateClick = async (selected) => {
-      
-        const title = prompt("Please enter a new title for your event");
-        // const decription = prompt("Please enter price this service ")
-        const calendarApi = selected.view.calendar;
-        const eventData = {
-          nameEvent : `${title}`,
-          appointmentStart : selected.startStr,
-          appointmentEnd : selected.endStr
-        };
-        calendarApi.unselect();
-
-        if(title) {
-            calendarApi.addEvent({
-                id: `${selected.dateStr}-${title}`,
-                title,
-                start:selected.startStr,
-                end: selected.endStr,
-                allDay: selected.allDay,
-            }             
-          )
-            console.log(eventData);
-
-            try {
-              const response = await fetch('http://localhost:8081/Appointment', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(eventData),  // Send event data in the request body
+      const title = prompt("Please enter a new title for your event");
+  
+      if (!title) {
+          console.log("Không có tên sự kiện hoặc người dùng đã hủy");
+          return;
+      }
+  
+      const token = localStorage.getItem('jwtToken');
+      const calendarApi = selected.view.calendar;
+      const eventData = {
+          nameEvent: `${title}`,
+          appointmentStart: selected.startStr,
+          appointmentEnd: selected.endStr
+      };
+  
+      let timeWithTimezoneUTC7Start;
+      let timeWithTimezoneUTC7End;
+      calendarApi.unselect(); // Bỏ chọn ngày
+  
+      // Kiểm tra nếu sự kiện có múi giờ
+      if (title && selected.startStr && /[+-]\d{2}:\d{2}$/.test(selected.startStr)) {
+          // Nếu có múi giờ, tạo sự kiện bình thường với múi giờ
+          calendarApi.addEvent({
+              id: `${selected.dateStr}-${title}`,
+              title,
+              start: selected.startStr,
+              end: selected.endStr,
+              allDay: selected.allDay, // Giữ nguyên trạng thái allDay nếu có múi giờ
+          });
+  
+          try {
+              const response = await fetch(`${API_URL}/Appointment`, {
+                  method: 'POST',
+                  headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${token}`,
+                  },
+                  body: JSON.stringify(eventData),
               });
-        
+  
               if (!response.ok) {
-                const errorDetails = await response.json();
-                setMessage(`Error: ${errorDetails.message || 'Failed to create event'}`);
-                return;
+                  const errorDetails = await response.text();
+                  console.error('Error:', errorDetails);
+                  setMessage(`Error: ${errorDetails || 'Failed to create event'}`);
+                  return;
               }
-        
+  
+              // Phản hồi thành công
               const result = await response.json();
               setMessage('Event created successfully!');
-              console.log(result);  // Handle the success response
-            } catch (error) {
+              console.log(result);
+  
+              // Refresh lại lịch sau khi thêm sự kiện thành công
+              calendarApi.refetchEvents();
+          } catch (error) {
               console.error('Error:', error.message);
               setMessage('Error: Failed to create event.');
-            } finally {
+          } finally {
               setLoading(false);
+          }
+      } else {
+          // Nếu không có múi giờ, xử lý sự kiện All Day
+          console.log("Không có múi giờ:", selected.startStr);
+  
+          // Chuyển đổi thời gian thành All Day mà không cần múi giờ
+          // Đảm bảo bắt đầu vào đầu ngày và kết thúc vào cuối ngày của ngày được chọn
+          timeWithTimezoneUTC7Start = moment.tz(selected.startStr, "Asia/Ho_Chi_Minh").startOf('day').toISOString();
+          timeWithTimezoneUTC7End = moment.tz(selected.startStr, "Asia/Ho_Chi_Minh").endOf('day').toISOString();
+  
+          const eventData2 = {
+              nameEvent: `${title}`,
+              appointmentStart: timeWithTimezoneUTC7Start,
+              appointmentEnd: timeWithTimezoneUTC7End
+          };
+  
+          // Thêm sự kiện với allDay = true (sự kiện chỉ có ngày, không có thời gian)
+          calendarApi.addEvent({
+              id: `${selected.dateStr}-${title}`,
+              title,
+              start: timeWithTimezoneUTC7Start,  // Dùng thời gian đã chuyển đổi bắt đầu ngày
+              end: timeWithTimezoneUTC7End,  // Dùng thời gian đã chuyển đổi kết thúc ngày
+              allDay: true,  // Đánh dấu sự kiện là All Day (không có giờ)
+          });
+  
+          try {
+              const response = await fetch(`${API_URL}/Appointment`, {
+                  method: 'POST',
+                  headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${token}`,
+                  },
+                  body: JSON.stringify(eventData2),
+              });
+  
+              if (!response.ok) {
+                  const errorDetails = await response.text();
+                  console.error('Error:', errorDetails);
+                  setMessage(`Error: ${errorDetails || 'Failed to create event'}`);
+                  return;
+              }
+  
+              // Phản hồi thành công
+              const result = await response.json();
+              setMessage('Event created successfully!');
+              console.log(result);
+  
+              // Refresh lại lịch sau khi thêm sự kiện thành công
+              calendarApi.refetchEvents();
+          } catch (error) {
+              console.error('Error:', error.message);
+              setMessage('Error: Failed to create event.');
+          } finally {
+              setLoading(false);
+          }
+      }
+  };
+
+
+  const handleEventClick = (selected) => {
+    // Hiển thị hộp thoại xác nhận
+    const userConfirmed = window.confirm(`Bạn có chắc chắn muốn xóa sự kiện '${selected.event.title}'?`);
+    
+    if (userConfirmed) {
+        // Nếu người dùng chọn "OK", xóa sự kiện khỏi lịch
+        selected.event.remove();
+
+        // Lấy appointmentId từ các thuộc tính hoặc id của sự kiện
+        const appointmentId = selected.event.extendedProps.appointmentId || selected.event.id;
+        console.log('Mã cuộc hẹn:', appointmentId);
+
+        // Lấy token từ localStorage
+        const token = localStorage.getItem('jwtToken');
+        
+        // Kiểm tra xem token có tồn tại không
+        if (!token) {
+            alert('Bạn cần đăng nhập để xóa sự kiện.');
+            return;
+        }
+
+        // Gửi yêu cầu xóa qua API
+        fetch(`${API_URL}/Appointment/${appointmentId}`, {
+            method: "DELETE",
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Phản hồi từ server không hợp lệ');
             }
-          }
-    };
+            return response.json();
+        })
+        .then(data => {
+            console.log('Thành công:', data);
+            alert('Sự kiện đã được xóa!');
+        })
+        .catch(error => {
+            console.error('Lỗi:', error);
+            alert('Đã có lỗi xảy ra khi xóa sự kiện.');
+        });
+    } else {
+        // Nếu người dùng chọn "Cancel", không làm gì cả
+        console.log('Người dùng đã hủy thao tác xóa');
+    }
+};
 
-    const handleEventClick = (selected) => {
-        if(window.confirm(`Are you sure you want to delete the even '${selected.event.title}'` ) )   
-          {
-               selected.event.remove(); 
-          }
-        console.log(selected.event.id);
-        fetch(`http://localhost:8081/Appointment/${selected.event.id}`,{
-          method:"DELETE"
-          
-      })
-      .then(response => {
-          if (!response.ok) {
-              throw new Error('Network response was not ok');
-          }
-          return response.json(); // This is where the error might occur
-      })
-      .then(data => {
-          console.log('Success:', data);
-          alert('new Staff delete'); 
-      })
-      .catch(error => {
-          // console.error('Error:', error);
-          alert('Success'); 
-      });
-    };
-
+  
     return <Box m="20px">
         <Header title="CALENDAR" subtitle={"Full Calendar Interative Page"} />
         <Box display="flex" justifyContent="space-between" >
-            {/* CALENDAR SIDEBAR */}
+            {/* CALENDAR SIDEBAR */} 
             <Box 
              flex="1 1 20% " 
              backgroundColor={colors.primary[400]}

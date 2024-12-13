@@ -210,3 +210,8 @@ export const useMode = () => {
     const theme = useMemo(() => createTheme(themeSettings(mode)), [mode]);
     return [theme, colorMode];
 }
+
+export const API_URL = 'http://localhost:8081';
+
+// https://perfect10.services
+// http://localhost:8081
